@@ -1,8 +1,7 @@
 __pycache__/
 *.pyc
-*.db
 .env
-venv/
-AppData/
-.DS_Store
+database.db
 flask_session/
+venv/
+.venv/

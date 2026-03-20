@@ -1,23 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | AI Writer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<body class="auth-page">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-grid"></div>
 
-<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card glass-card fade-up">
+            <div class="brand">AI Writer</div>
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Log in to continue to your dashboard.</p>
 
-<div class="auth-box">
-    <h1>Login</h1>
+            <div id="message" class="message hidden"></div>
 
-    <input id="username" placeholder="Username">
-    <input id="password" type="password" placeholder="Password">
+            <form id="loginForm" class="auth-form">
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Enter your username"
+                    required
+                >
 
-    <button onclick="login()">Login</button>
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                >
 
-    <p>New user? <a href="/register">Register</a></p>
-</div>
+                <button type="submit" class="btn btn-primary btn-glow">Login</button>
+            </form>
 
-<script src="/static/app.js"></script>
+            <p class="switch-link">
+                Don’t have an account?
+                <a href="{{ url_for('register_page') }}">Register</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

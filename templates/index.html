@@ -1,49 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | AI Writer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<body class="dashboard-page">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+    <div class="bg-grid"></div>
 
-<body class="dashboard-body">
-
-<div class="sidebar">
-    <div class="logo">AI Writer</div>
-
-    <button onclick="setMode('email', this)">Email</button>
-    <button onclick="setMode('text', this)">Text</button>
-    <button onclick="setMode('reply', this)">Reply</button>
-    <button onclick="setMode('improve', this)">Improve</button>
-</div>
-
-<div class="main">
-
-    <div class="topbar">
-        <div class="title">Dashboard</div>
-        <a class="logout" href="/logout">Logout</a>
-    </div>
-
-    <div class="center">
-        <div class="card">
-
-            <textarea id="input"></textarea>
-
-            <button onclick="generate()">Generate</button>
-
-            <div id="output">
-              <div id="loading" class="loading hidden">AI is thinking...</div>
+    <div class="layout">
+        <aside class="sidebar glass-sidebar fade-left">
+            <div>
+                <div class="brand">AI Writer</div>
+                <p class="sidebar-text">Logged in as <strong>{{ username }}</strong></p>
             </div>
 
-        </div>
+            <div class="mode-group">
+                <button class="mode-btn active" data-mode="email">Email</button>
+                <button class="mode-btn" data-mode="text">Fix Writing</button>
+                <button class="mode-btn" data-mode="reply">Reply</button>
+                <button class="mode-btn" data-mode="improve">Improve</button>
+            </div>
+
+            <a href="{{ url_for('logout') }}" class="btn btn-danger logout-btn">Logout</a>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header fade-up centered-hero">
+                <div class="hero-pill">Write smarter • faster • cleaner</div>
+                <h1>Turn rough ideas into clean writing.</h1>
+                <p>
+                    Draft emails, polish messy sentences, improve wording, and shape better responses
+                    from one creative workspace.
+                </p>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="card glass-card fade-up delay-1">
+                    <div class="card-header">
+                        <h2>Generator</h2>
+                        <span id="modeBadge" class="badge">email</span>
+                    </div>
+
+                    <div id="dashboardMessage" class="message hidden"></div>
+
+                    <label for="inputText" class="label">Your Input</label>
+                    <textarea
+                        id="inputText"
+                        placeholder="Write the idea, topic, or message you want turned into an email..."
+                    ></textarea>
+
+                    <div class="action-row">
+                        <button id="generateBtn" class="btn btn-primary btn-glow">Generate</button>
+                    </div>
+
+                    <div class="output-box glow-panel">
+                        <div class="output-header">
+                            <h3>Output</h3>
+                            <button id="copyBtn" class="btn btn-secondary" type="button">Copy</button>
+                        </div>
+                        <pre id="outputText">Your generated result will appear here...</pre>
+                    </div>
+                </section>
+
+                <section class="card glass-card fade-up delay-2">
+                    <div class="card-header">
+                        <h2>History</h2>
+                    </div>
+
+                    <div id="historyList" class="history-list">
+                        <div class="empty-history">No history yet.</div>
+                    </div>
+                </section>
+            </div>
+        </main>
     </div>
 
-    <div class="history">
-        <h3>History</h3>
-        <div id="historyList"></div>
-    </div>
-
-</div>
-
-<script src="/static/app.js"></script>
+    <script>
+        window.currentUsername = "{{ username }}";
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
