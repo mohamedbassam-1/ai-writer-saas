@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_cors import CORS
 import sqlite3
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -36,6 +37,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 init_db()
 
 
@@ -45,7 +47,10 @@ def login():
     if request.method == "GET":
         return render_template("login.html")
 
-    data = request.json
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data"}), 400
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -68,7 +73,10 @@ def register():
     if request.method == "GET":
         return render_template("register.html")
 
-    data = request.json
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data"}), 400
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -78,6 +86,7 @@ def register():
                   (data["username"], data["password"]))
         conn.commit()
     except:
+        conn.close()
         return jsonify({"error": "exists"}), 400
 
     conn.close()
@@ -105,8 +114,13 @@ def fake_ai(text, mode):
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    user = session["user"]
-    data = request.json
+    if "user" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data"}), 400
 
     result = fake_ai(data["text"], data["mode"])
 
@@ -116,7 +130,7 @@ def generate():
     c.execute("""
     INSERT INTO history (username, input, mode, output)
     VALUES (?, ?, ?, ?)
-    """, (user, data["text"], data["mode"], result))
+    """, (session["user"], data["text"], data["mode"], result))
 
     conn.commit()
     conn.close()
@@ -126,7 +140,8 @@ def generate():
 
 @app.route("/history")
 def history():
-    user = session["user"]
+    if "user" not in session:
+        return jsonify([])
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -136,7 +151,7 @@ def history():
     FROM history
     WHERE username=?
     ORDER BY id DESC
-    """, (user,))
+    """, (session["user"],))
 
     data = c.fetchall()
     conn.close()
@@ -147,8 +162,7 @@ def history():
     ])
 
 
-import os
-
+# ---------------- RUN ----------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
