@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="dashboard-body">
+
+<div class="sidebar">
+    <div class="logo">AI Writer</div>
+
+    <button onclick="setMode('email', this)">Email</button>
+    <button onclick="setMode('text', this)">Text</button>
+    <button onclick="setMode('reply', this)">Reply</button>
+    <button onclick="setMode('improve', this)">Improve</button>
+</div>
+
+<div class="main">
+
+    <div class="topbar">
+        <div class="title">Dashboard</div>
+        <a class="logout" href="/logout">Logout</a>
+    </div>
+
+    <div class="center">
+        <div class="card">
+
+            <textarea id="input"></textarea>
+
+            <button onclick="generate()">Generate</button>
+
+            <div id="output">
+              <div id="loading" class="loading hidden">AI is thinking...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="history">
+        <h3>History</h3>
+        <div id="historyList"></div>
+    </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
