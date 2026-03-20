@@ -5,3 +5,4 @@ __pycache__/
 venv/
 AppData/
 .DS_Store
+flask_session/

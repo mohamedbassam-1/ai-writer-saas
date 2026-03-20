@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, session, redirect
-from flask_session import Session
 from flask_cors import CORS
 import sqlite3
 
@@ -7,8 +6,6 @@ app = Flask(__name__)
 CORS(app)
 
 app.config["SECRET_KEY"] = "secret"
-app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
 
 DB = "database.db"
 
