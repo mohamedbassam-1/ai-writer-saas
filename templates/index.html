@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | AI Writer</title>
+    <title>Dashboard | AI Writer SaaS</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="dashboard-page">
@@ -20,13 +20,13 @@
             </div>
 
             <div class="mode-group">
-                <button class="mode-btn active" data-mode="email">Email</button>
+                <button class="mode-btn active" data-mode="email">Email Builder</button>
                 <button class="mode-btn" data-mode="text">Fix Writing</button>
-                <button class="mode-btn" data-mode="reply">Reply</button>
-                <button class="mode-btn" data-mode="improve">Improve</button>
+                <button class="mode-btn" data-mode="reply">Smart Reply</button>
+                <button class="mode-btn" data-mode="improve">Elevate Prose</button>
             </div>
 
-            <a href="{{ url_for('logout') }}" class="btn btn-danger logout-btn">Logout</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger logout-btn">Logout Workspace</a>
         </aside>
 
         <main class="main-content">
@@ -42,38 +42,38 @@
             <div class="dashboard-grid">
                 <section class="card glass-card fade-up delay-1">
                     <div class="card-header">
-                        <h2>Generator</h2>
+                        <h2>Content Engine</h2>
                         <span id="modeBadge" class="badge">email</span>
                     </div>
 
                     <div id="dashboardMessage" class="message hidden"></div>
 
-                    <label for="inputText" class="label">Your Input</label>
+                    <label for="inputText" class="label">Your Input Context</label>
                     <textarea
                         id="inputText"
-                        placeholder="Write the idea, topic, or message you want turned into an email..."
+                        placeholder="Write the idea, topic, or rough draft notes you want turned into a polished email..."
                     ></textarea>
 
                     <div class="action-row">
-                        <button id="generateBtn" class="btn btn-primary btn-glow">Generate</button>
+                        <button id="generateBtn" class="btn btn-primary btn-glow">Generate with AI</button>
                     </div>
 
                     <div class="output-box glow-panel">
                         <div class="output-header">
-                            <h3>Output</h3>
-                            <button id="copyBtn" class="btn btn-secondary" type="button">Copy</button>
+                            <h3>Output Workspace</h3>
+                            <button id="copyBtn" class="btn btn-secondary" type="button">Copy Content</button>
                         </div>
-                        <pre id="outputText">Your generated result will appear here...</pre>
+                        <pre id="outputText">Your real-time generated AI result will appear here...</pre>
                     </div>
                 </section>
 
                 <section class="card glass-card fade-up delay-2">
                     <div class="card-header">
-                        <h2>History</h2>
+                        <h2>Recent Executions</h2>
                     </div>
 
                     <div id="historyList" class="history-list">
-                        <div class="empty-history">No history yet.</div>
+                        <div class="empty-history">No background executions recorded yet.</div>
                     </div>
                 </section>
             </div>

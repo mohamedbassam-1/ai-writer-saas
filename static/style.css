@@ -792,3 +792,20 @@ textarea {
         font-size: 15px;
     }
 }
+
+/* Custom UI Core Alignment Corrections */
+
+/* Prevents Gemini long outputs from running horizontally out of screen margins */
+#outputText {
+    white-space: pre-wrap;       /* Retains structural spacing formatting but forces wraps */
+    word-wrap: break-word;       /* Splice breaking characters out cleanly */
+    word-break: break-word;
+    overflow-x: hidden;          /* Shaves out horizontal side scrollbars entirely */
+}
+
+/* Enhances general smoothness of focus items */
+textarea:focus, input:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.6) !important;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}

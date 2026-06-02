@@ -1,474 +1,130 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.middleware.proxy_fix import ProxyFix
-from functools import wraps
-from pathlib import Path
-import sqlite3
+import os
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from dotenv import load_dotenv
+from google import genai
 
-from config import Config
+# Load environment variables from your secret .env file
+load_dotenv()
 
 app = Flask(__name__)
-app.config.from_object(Config)
+# Replace this fallback string with a long random key inside your .env file
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "super-secret-saas-key-12345")
 
-# Helps Flask behave correctly behind Railway's proxy / HTTPS termination
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+# Initialize the Gemini Client using the modern official google-genai SDK module
+# It automatically picks up GEMINI_API_KEY from your environment variables
+try:
+    client = genai.Client()
+except Exception as e:
+    print(f"Configuration Warning: Gemini Client initialization failed. Error: {e}")
+    client = None
 
+# Mock database tracking for session evaluation testing
+USERS = {"aaaaaa": "password123"}
 
-# =========================
-# DATABASE
-# =========================
-def ensure_database_directory():
-    db_path = Path(app.config["DATABASE"])
-    if db_path.parent and str(db_path.parent) not in ("", "."):
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+@app.route('/')
+def index():
+    if "username" not in session:
+        return redirect(url_for('login_page'))
+    return render_template('index.html', username=session["username"])
 
-
-def get_db_connection():
-    ensure_database_directory()
-    conn = sqlite3.connect(app.config["DATABASE"])
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            input_text TEXT NOT NULL,
-            mode TEXT NOT NULL,
-            output_text TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-# =========================
-# HELPERS
-# =========================
-def login_required(view_func):
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            if request.path.startswith("/api/"):
-                return jsonify({
-                    "success": False,
-                    "message": "You must log in first."
-                }), 401
-            return redirect(url_for("login_page"))
-        return view_func(*args, **kwargs)
-    return wrapper
-
-
-def get_current_user():
-    if "user_id" not in session:
-        return None
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, username FROM users WHERE id = ?",
-        (session["user_id"],)
-    )
-    user = cur.fetchone()
-    conn.close()
-    return user
-
-
-def normalize_spacing(text):
-    return " ".join(text.strip().split())
-
-
-def smart_capitalize(text):
-    if not text:
-        return text
-    return text[0].upper() + text[1:]
-
-
-def basic_writing_fix(text):
-    fixed = text.strip()
-
-    replacements = {
-        " i ": " I ",
-        " im ": " I'm ",
-        " dont ": " don't ",
-        " cant ": " can't ",
-        " doesnt ": " doesn't ",
-        " didnt ": " didn't ",
-        " isnt ": " isn't ",
-        " wasnt ": " wasn't ",
-        " werent ": " weren't ",
-        " ive ": " I've ",
-        " id ": " I'd ",
-        " ill ": " I'll ",
-        " u ": " you ",
-        " ur ": " your ",
-        " pls ": " please ",
-        " thx ": " thanks ",
-        " wsa ": " was ",
-        "teh": "the"
-    }
-
-    padded = f" {fixed.lower()} "
-    for old, new in replacements.items():
-        padded = padded.replace(old, new)
-
-    fixed = normalize_spacing(padded)
-
-    if fixed:
-        fixed = smart_capitalize(fixed)
-        if fixed[-1] not in ".!?":
-            fixed += "."
-
-    return fixed
-
-
-def generate_mock_ai(text, mode):
-    clean_text = text.strip()
-
-    if mode == "email":
-        return (
-            "Subject: Professional Follow-Up\n\n"
-            "Hello,\n\n"
-            f"{clean_text}\n\n"
-            "Please let me know if you need anything else.\n\n"
-            "Best regards,"
-        )
-
-    if mode == "reply":
-        return (
-            "Hello,\n\n"
-            "Thank you for your message.\n\n"
-            f"Regarding your request: {clean_text}\n\n"
-            "I appreciate your time and will follow up shortly.\n\n"
-            "Best regards,"
-        )
-
-    if mode == "improve":
-        improved = basic_writing_fix(clean_text)
-        return (
-            "Improved Version:\n\n"
-            f"{improved}\n\n"
-            "This version is cleaner, more polished, and easier to read."
-        )
-
-    if mode == "text":
-        corrected = basic_writing_fix(clean_text)
-        return (
-            "Writing Fix:\n\n"
-            f"{corrected}\n\n"
-            "Checked for spelling, grammar, and clarity."
-        )
-
-    return (
-        "Generated Text:\n\n"
-        f"{clean_text}"
-    )
-
-
-# =========================
-# HEALTHCHECK
-# =========================
-@app.route("/health")
-def health():
-    return jsonify({
-        "success": True,
-        "status": "ok"
-    }), 200
-
-
-# =========================
-# PAGE ROUTES
-# =========================
-@app.route("/")
-def home():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login_page"))
-
-
-@app.route("/login")
+@app.route('/login')
 def login_page():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return render_template("login.html")
+    return render_template('login.html')
 
-
-@app.route("/register")
+@app.route('/register')
 def register_page():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return render_template("register.html")
+    return render_template('register.html')
 
-
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    user = get_current_user()
-    username = user["username"] if user else "User"
-    return render_template("index.html", username=username)
-
-
-@app.route("/logout")
+@app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for("login_page"))
+    return redirect(url_for('login_page'))
 
-
-# =========================
-# API ROUTES
-# =========================
-@app.route("/api/register", methods=["POST"])
-def api_register():
-    data = request.get_json(silent=True)
-
-    if not data:
-        return jsonify({
-            "success": False,
-            "message": "No data received."
-        }), 400
-
-    username = str(data.get("username", "")).strip()
-    password = str(data.get("password", "")).strip()
-
-    if not username or not password:
-        return jsonify({
-            "success": False,
-            "message": "Username and password are required."
-        }), 400
-
-    if len(username) < 3:
-        return jsonify({
-            "success": False,
-            "message": "Username must be at least 3 characters."
-        }), 400
-
-    if len(password) < 6:
-        return jsonify({
-            "success": False,
-            "message": "Password must be at least 6 characters."
-        }), 400
-
-    password_hash = generate_password_hash(password)
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    try:
-        cur.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, password_hash)
-        )
-        conn.commit()
-
-        cur.execute(
-            "SELECT id, username FROM users WHERE username = ?",
-            (username,)
-        )
-        user = cur.fetchone()
-
-        session["user_id"] = user["id"]
-        session["username"] = user["username"]
-
-        return jsonify({
-            "success": True,
-            "message": "Account created successfully.",
-            "redirect": url_for("dashboard")
-        }), 200
-
-    except sqlite3.IntegrityError:
-        return jsonify({
-            "success": False,
-            "message": "This username already exists."
-        }), 400
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": f"Registration failed: {str(e)}"
-        }), 500
-
-    finally:
-        conn.close()
-
-
-@app.route("/api/login", methods=["POST"])
+# ==========================================
+# 🔐 AUTHENTICATION API ENDPOINTS
+# ==========================================
+@app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.get_json(silent=True)
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
 
-    if not data:
-        return jsonify({
-            "success": False,
-            "message": "No data received."
-        }), 400
+    if username in USERS and USERS[username] == password:
+        session["username"] = username
+        return jsonify({"success": True, "redirect": url_for('index')})
+    
+    return jsonify({"success": False, "message": "Invalid username or password credentials."})
 
-    username = str(data.get("username", "")).strip()
-    password = str(data.get("password", "")).strip()
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
 
     if not username or not password:
-        return jsonify({
-            "success": False,
-            "message": "Username and password are required."
-        }), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
-        (username,)
-    )
-    user = cur.fetchone()
-    conn.close()
-
-    if not user:
-        return jsonify({
-            "success": False,
-            "message": "Username not found."
-        }), 404
-
-    if not check_password_hash(user["password_hash"], password):
-        return jsonify({
-            "success": False,
-            "message": "Incorrect password."
-        }), 401
-
-    session["user_id"] = user["id"]
-    session["username"] = user["username"]
-
-    return jsonify({
-        "success": True,
-        "message": "Login successful.",
-        "redirect": url_for("dashboard")
-    }), 200
+        return jsonify({"success": False, "message": "Username and password fields cannot be blank."})
+    
+    if username in USERS:
+        return jsonify({"success": False, "message": "This username is already taken."})
+    
+    # Register user profile mapping
+    USERS[username] = password
+    session["username"] = username
+    return jsonify({"success": True, "redirect": url_for('index')})
 
 
-@app.route("/api/generate", methods=["POST"])
-@login_required
+# ==========================================
+# 🤖 GENERATIVE AI PIPELINE
+# ==========================================
+@app.route('/api/generate', methods=['POST'])
 def api_generate():
-    data = request.get_json(silent=True)
+    if "username" not in session:
+        return jsonify({"success": False, "message": "Unauthorized access workspace session context."}), 401
 
-    if not data:
-        return jsonify({
-            "success": False,
-            "message": "No data received."
-        }), 400
+    data = request.get_json() or {}
+    user_input = data.get("text", "").strip()
+    selected_mode = data.get("mode", "email")
 
-    text = str(data.get("text", "")).strip()
-    mode = str(data.get("mode", "text")).strip().lower()
+    if not user_input:
+        return jsonify({"success": False, "message": "Please supply text context before hitting generate."})
 
-    allowed_modes = {"email", "text", "reply", "improve"}
+    if not client:
+        return jsonify({"success": False, "message": "Gemini API client not initialized. Check your .env setup."})
 
-    if mode not in allowed_modes:
-        return jsonify({
-            "success": False,
-            "message": "Invalid mode selected."
-        }), 400
+    # Strict system instruction prompt mapping matching your exact frontend button modes!
+    mode_instructions = {
+        "email": "You are an expert executive assistant. Turn the following rough notes into a professional, clear, and high-converting email draft.",
+        "text": "You are a professional editor. Review the following text, fix all grammatical errors, structural flaws, and spelling typos, while keeping the original meaning.",
+        "reply": "You are a corporate communications manager. Analyze the incoming message context provided and write a polite, smart, and professional reply draft.",
+        "improve": "You are an award-winning copywriter. Rewrite the following text to dramatically elevate its vocabulary, impact, clarity, and overall flow."
+    }
 
-    if not text:
-        return jsonify({
-            "success": False,
-            "message": "Please enter some text first."
-        }), 400
-
-    result = generate_mock_ai(text, mode)
-
-    conn = get_db_connection()
-    cur = conn.cursor()
+    # Fallback to standard email builder if tracking variable contains code slip ups
+    system_instruction = mode_instructions.get(selected_mode, mode_instructions["email"])
 
     try:
-        cur.execute("""
-            INSERT INTO history (user_id, input_text, mode, output_text)
-            VALUES (?, ?, ?, ?)
-        """, (session["user_id"], text, mode, result))
-        conn.commit()
-
+        # Generate raw response output via standard live gemini-2.5-flash configuration
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_input,
+            config={'system_instruction': system_instruction}
+        )
+        
         return jsonify({
-            "success": True,
-            "result": result
-        }), 200
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": f"Could not save history: {str(e)}"
-        }), 500
-
-    finally:
-        conn.close()
-
-
-@app.route("/api/history", methods=["GET"])
-@login_required
-def api_history():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT id, input_text, mode, output_text, created_at
-        FROM history
-        WHERE user_id = ?
-        ORDER BY id DESC
-        LIMIT 20
-    """, (session["user_id"],))
-
-    rows = cur.fetchall()
-    conn.close()
-
-    history = []
-    for row in rows:
-        history.append({
-            "id": row["id"],
-            "input_text": row["input_text"],
-            "mode": row["mode"],
-            "output_text": row["output_text"],
-            "created_at": row["created_at"]
+            "success": True, 
+            "result": response.text
         })
 
-    return jsonify({
-        "success": True,
-        "history": history
-    }), 200
-
-
-@app.route("/api/check-session", methods=["GET"])
-def api_check_session():
-    if "user_id" in session:
+    except Exception as e:
         return jsonify({
-            "success": True,
-            "logged_in": True,
-            "username": session.get("username", "")
-        }), 200
+            "success": False, 
+            "message": f"Gemini Generation Error: {str(e)}"
+        })
 
-    return jsonify({
-        "success": True,
-        "logged_in": False
-    }), 200
+# Dynamic stub layout handling history canvas sync values
+@app.route('/api/history', methods=['POST', 'GET'])
+def api_history():
+    return jsonify({"success": True, "history": []})
 
-
-# =========================
-# STARTUP
-# =========================
-init_db()
-
-if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=app.config["PORT"],
-        debug=app.config["DEBUG"]
-    )
+if __name__ == '__main__':
+    app.run(debug=True)

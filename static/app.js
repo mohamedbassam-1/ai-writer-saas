@@ -1,284 +1,210 @@
-let currentMode = "email";
+document.addEventListener("DOMContentLoaded", () => {
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const generateBtn = document.getElementById("generateBtn");
 
-const modeConfig = {
-    email: {
-        label: "email",
-        placeholder: "Write the idea, topic, or message you want turned into an email..."
-    },
-    text: {
-        label: "fix writing",
-        placeholder: "Paste rough writing here and I'll clean the spelling, grammar, and wording..."
-    },
-    reply: {
-        label: "reply",
-        placeholder: "Paste the message or situation you want to reply to..."
-    },
-    improve: {
-        label: "improve",
-        placeholder: "Paste your writing here and I'll make it sound more polished and clear..."
-    }
-};
-
-function showMessage(elementId, text, type = "error") {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    element.textContent = text;
-    element.classList.remove("hidden", "error", "success");
-    element.classList.add(type);
-}
-
-function hideMessage(elementId) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    element.textContent = "";
-    element.classList.add("hidden");
-    element.classList.remove("error", "success");
-}
-
-async function sendJSON(url, data) {
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-    });
-
-    let result;
-    try {
-        result = await response.json();
-    } catch (error) {
-        result = {
-            success: false,
-            message: "Invalid server response."
-        };
+    // Unified helper utility to pop feedback messages into auth containers
+    function showAuthMessage(text, isSuccess = false) {
+        const msgEl = document.getElementById("message");
+        if (!msgEl) return;
+        msgEl.innerText = text;
+        msgEl.className = `message ${isSuccess ? 'success' : 'error'}`;
+        msgEl.classList.remove("hidden");
     }
 
-    return { response, result };
-}
+    // ==========================================
+    // 🔐 SECURE AUTHENTICATION ACTION LISTENERS
+    // ==========================================
+    if (loginForm) {
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const usernameInput = document.getElementById("username").value.trim();
+            const passwordInput = document.getElementById("password").value;
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
 
-function applyModeUI(mode) {
-    const badge = document.getElementById("modeBadge");
-    const inputText = document.getElementById("inputText");
+            try {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Authenticating Session...";
 
-    const config = modeConfig[mode] || modeConfig.email;
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: usernameInput, password: passwordInput })
+                });
+                const data = await response.json();
 
-    if (badge) {
-        badge.textContent = config.label;
+                if (data.success) {
+                    showAuthMessage("Success! Access granted. Redirecting...", true);
+                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                } else {
+                    showAuthMessage(data.message || "Invalid account authorization info.");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Login";
+                }
+            } catch (error) {
+                showAuthMessage("A networking pipeline error has occurred.");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Login";
+            }
+        });
     }
 
-    if (inputText) {
-        inputText.placeholder = config.placeholder;
-    }
-}
+    if (registerForm) {
+        registerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const usernameInput = document.getElementById("username").value.trim();
+            const passwordInput = document.getElementById("password").value;
+            const submitBtn = registerForm.querySelector('button[type="submit"]');
 
-const loginForm = document.getElementById("loginForm");
-
-if (loginForm) {
-    loginForm.addEventListener("submit", async function (event) {
-        event.preventDefault();
-        hideMessage("message");
-
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value.trim();
-
-        try {
-            const { response, result } = await sendJSON("/api/login", {
-                username: username,
-                password: password
-            });
-
-            if (!response.ok) {
-                showMessage("message", result.message || "Login failed.");
+            if (usernameInput.length < 3 || passwordInput.length < 6) {
+                showAuthMessage("Ensure inputs fulfill safety length constraints (User >=3, Pass >=6).");
                 return;
             }
 
-            showMessage("message", result.message || "Login successful.", "success");
+            try {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Provisioning Workspace Environment...";
 
-            setTimeout(() => {
-                window.location.href = result.redirect || "/dashboard";
-            }, 300);
-        } catch (error) {
-            showMessage("message", "Something went wrong during login.");
-        }
-    });
-}
+                const response = await fetch("/api/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: usernameInput, password: passwordInput })
+                });
+                const data = await response.json();
 
-const registerForm = document.getElementById("registerForm");
-
-if (registerForm) {
-    registerForm.addEventListener("submit", async function (event) {
-        event.preventDefault();
-        hideMessage("message");
-
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value.trim();
-
-        try {
-            const { response, result } = await sendJSON("/api/register", {
-                username: username,
-                password: password
-            });
-
-            if (!response.ok) {
-                showMessage("message", result.message || "Registration failed.");
-                return;
+                if (data.success) {
+                    showAuthMessage("Account registered successfully! Tuning dashboards...", true);
+                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                } else {
+                    showAuthMessage(data.message || "Failed to create workspace profile mapping.");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Register";
+                }
+            } catch (error) {
+                showAuthMessage("Internal gateway transmission connectivity break.");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Register";
             }
-
-            showMessage("message", result.message || "Account created.", "success");
-
-            setTimeout(() => {
-                window.location.href = result.redirect || "/dashboard";
-            }, 300);
-        } catch (error) {
-            showMessage("message", "Something went wrong during registration.");
-        }
-    });
-}
-
-function setupModeButtons() {
-    const buttons = document.querySelectorAll(".mode-btn");
-
-    if (!buttons.length) return;
-
-    buttons.forEach((button) => {
-        button.addEventListener("click", function () {
-            buttons.forEach((btn) => btn.classList.remove("active"));
-            this.classList.add("active");
-            currentMode = this.dataset.mode || "email";
-            applyModeUI(currentMode);
         });
-    });
-
-    applyModeUI(currentMode);
-}
-
-async function generateContent() {
-    hideMessage("dashboardMessage");
-
-    const inputText = document.getElementById("inputText");
-    const outputText = document.getElementById("outputText");
-    const generateBtn = document.getElementById("generateBtn");
-
-    if (!inputText || !outputText || !generateBtn) return;
-
-    const text = inputText.value.trim();
-
-    if (!text) {
-        showMessage("dashboardMessage", "Please enter some text first.");
-        return;
     }
 
-    generateBtn.disabled = true;
-    generateBtn.textContent = "Generating...";
-    outputText.textContent = "Generating...";
-
-    try {
-        const { response, result } = await sendJSON("/api/generate", {
-            text: text,
-            mode: currentMode
-        });
-
-        if (!response.ok) {
-            outputText.textContent = "Your generated result will appear here...";
-            showMessage("dashboardMessage", result.message || "Generation failed.");
-            return;
-        }
-
-        outputText.textContent = result.result || "No result returned.";
-        loadHistory();
-    } catch (error) {
-        outputText.textContent = "Your generated result will appear here...";
-        showMessage("dashboardMessage", "Something went wrong while generating.");
-    } finally {
-        generateBtn.disabled = false;
-        generateBtn.textContent = "Generate";
-    }
-}
-
-function escapeHTML(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function prettifyMode(mode) {
-    if (mode === "text") return "fix writing";
-    return mode;
-}
-
-async function loadHistory() {
-    const historyList = document.getElementById("historyList");
-    if (!historyList) return;
-
-    try {
-        const response = await fetch("/api/history");
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-            historyList.innerHTML = `<div class="empty-history">Could not load history.</div>`;
-            return;
-        }
-
-        const items = result.history || [];
-
-        if (!items.length) {
-            historyList.innerHTML = `<div class="empty-history">No history yet.</div>`;
-            return;
-        }
-
-        historyList.innerHTML = items.map((item) => `
-            <div class="history-item">
-                <div class="history-top">
-                    <span class="history-mode">${escapeHTML(prettifyMode(item.mode))}</span>
-                    <span>${escapeHTML(item.created_at || "")}</span>
-                </div>
-
-                <div class="history-block">
-                    <div class="history-label">Input</div>
-                    <div class="history-text">${escapeHTML(item.input_text)}</div>
-                </div>
-
-                <div class="history-block">
-                    <div class="history-label">Output</div>
-                    <div class="history-text">${escapeHTML(item.output_text)}</div>
-                </div>
-            </div>
-        `).join("");
-    } catch (error) {
-        historyList.innerHTML = `<div class="empty-history">Could not load history.</div>`;
-    }
-}
-
-function setupCopyButton() {
-    const copyBtn = document.getElementById("copyBtn");
-    const outputText = document.getElementById("outputText");
-
-    if (!copyBtn || !outputText) return;
-
-    copyBtn.addEventListener("click", async function () {
-        try {
-            await navigator.clipboard.writeText(outputText.textContent);
-            const originalText = copyBtn.textContent;
-            copyBtn.textContent = "Copied!";
-            setTimeout(() => {
-                copyBtn.textContent = originalText;
-            }, 1200);
-        } catch (error) {
-            alert("Copy failed.");
-        }
-    });
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    setupModeButtons();
-    setupCopyButton();
-
-    const generateBtn = document.getElementById("generateBtn");
+    // ==========================================
+    // 🤖 CONTENT GENERATION LOGIC ENGINE 
+    // ==========================================
     if (generateBtn) {
-        generateBtn.addEventListener("click", generateContent);
-        loadHistory();
+        const modeButtons = document.querySelectorAll(".mode-btn");
+        const modeBadge = document.getElementById("modeBadge");
+        const inputText = document.getElementById("inputText");
+        const outputText = document.getElementById("outputText");
+        const copyBtn = document.getElementById("copyBtn");
+        const historyList = document.getElementById("historyList");
+        const dashMessage = document.getElementById("dashboardMessage");
+
+        let currentMode = "email";
+        
+        // Dynamically rotate input context placeholder instructions matching selected sidebar item tags
+        const placeholders = {
+            email: "Write the idea, topic, or rough draft notes you want turned into a polished email...",
+            text: "Paste sentences containing grammar bugs, typos, or unclear structural flow...",
+            reply: "Paste a client/boss message along with rough notes of what you want to answer...",
+            improve: "Paste an essay, paragraph, or text snippet you want to dramatically elevate..."
+        };
+
+        // Navigation state activation click handler
+        modeButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                modeButtons.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                
+                currentMode = btn.getAttribute("data-mode");
+                if (modeBadge) modeBadge.innerText = currentMode;
+                if (inputText) inputText.placeholder = placeholders[currentMode] || "Provide context input string details here...";
+            });
+        });
+
+        // Query backend live Large Language Model route pipelines
+        generateBtn.addEventListener("click", async () => {
+            const contextPayload = inputText.value.trim();
+            if (!contextPayload) {
+                dashMessage.innerText = "Please provide data context or copy notes inside the input box before generating.";
+                dashMessage.className = "message error";
+                dashMessage.classList.remove("hidden");
+                return;
+            }
+            dashMessage.classList.add("hidden");
+
+            try {
+                generateBtn.disabled = true;
+                generateBtn.innerText = "AI is writing...";
+                outputText.innerText = "Connecting to live Gemini AI Engine. Stream writing responses...";
+
+                const response = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: contextPayload, mode: currentMode })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    outputText.innerText = data.result;
+                    fetchHistoryLogs(); // Run background logs refresh sync
+                } else {
+                    outputText.innerText = `Pipeline Error Context: ${data.message}`;
+                }
+            } catch (err) {
+                outputText.innerText = "Connection break. Ensure your local Python microservice instance environment is running.";
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerText = "Generate with AI";
+            }
+        });
+
+        // Clipboard management helper
+        if (copyBtn) {
+            copyBtn.addEventListener("click", () => {
+                const copyTextString = outputText.innerText;
+                if (!copyTextString || copyTextString.startsWith("Your real-time generated")) return;
+                
+                navigator.clipboard.writeText(copyTextString).then(() => {
+                    const defaultLabel = copyBtn.innerText;
+                    copyBtn.innerText = "Copied!";
+                    setTimeout(() => { copyBtn.innerText = defaultLabel; }, 2000);
+                });
+            });
+        }
+
+        // Populate execution registry logs stack values from backend stub profiles
+        async function fetchHistoryLogs() {
+            if (!historyList) return;
+            try {
+                const res = await fetch("/api/history");
+                const data = await res.json();
+                if (data.success && data.history && data.history.length > 0) {
+                    historyList.innerHTML = ""; // Wipe blank state placeholder element rules
+                    data.history.forEach(item => {
+                        const historyCard = document.createElement("div");
+                        historyCard.className = "history-item";
+                        historyCard.innerHTML = `
+                            <div class="history-item-header">
+                                <span class="history-mode-tag">${item.mode.toUpperCase()}</span>
+                            </div>
+                            <p class="history-snippet-input"><strong>Input Context:</strong> ${item.input_text.substring(0, 60)}...</p>
+                        `;
+                        historyCard.addEventListener("click", () => {
+                            inputText.value = item.input_text;
+                            outputText.innerText = item.output_text;
+                            currentMode = item.mode;
+                            if (modeBadge) modeBadge.innerText = item.mode;
+                            modeButtons.forEach(b => {
+                                if(b.getAttribute("data-mode") === item.mode) b.classList.add("active");
+                                else b.classList.remove("active");
+                            });
+                        });
+                        historyList.appendChild(historyCard);
+                    });
+                }
+            } catch (err) { console.error("Database log mapping error background pull down: ", err); }
+        }
+        fetchHistoryLogs();
     }
 });

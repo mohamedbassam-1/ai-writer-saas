@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | AI Writer</title>
+    <title>Register | AI Writer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="auth-page">
@@ -14,18 +14,18 @@
     <div class="auth-container">
         <div class="auth-card glass-card fade-up">
             <div class="brand">AI Writer</div>
-            <h1>Welcome Back</h1>
-            <p class="subtitle">Log in to continue to your dashboard.</p>
+            <h1>Create Account</h1>
+            <p class="subtitle">Sign up to unlock your AI writing workspace.</p>
 
             <div id="message" class="message hidden"></div>
 
-            <form id="loginForm" class="auth-form">
+            <form id="registerForm" class="auth-form">
                 <label for="username">Username</label>
                 <input
                     type="text"
                     id="username"
                     name="username"
-                    placeholder="Enter your username"
+                    placeholder="Create a username (min 3 chars)"
                     required
                 >
 
@@ -34,16 +34,16 @@
                     type="password"
                     id="password"
                     name="password"
-                    placeholder="Enter your password"
+                    placeholder="Create a strong password (min 6 chars)"
                     required
                 >
 
-                <button type="submit" class="btn btn-primary btn-glow">Login</button>
+                <button type="submit" class="btn btn-primary btn-glow">Register</button>
             </form>
 
             <p class="switch-link">
-                Don’t have an account?
-                <a href="{{ url_for('register_page') }}">Register</a>
+                Already have an account?
+                <a href="{{ url_for('login_page') }}">Login</a>
             </p>
         </div>
     </div>
